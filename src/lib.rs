@@ -1,50 +1,73 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+#[derive(Debug)]
 struct HashMap<K, V> {
     buckets: Vec<Vec<(K, V)>>,
     count: u64,
+    initial_bucket_size: usize,
 }
-
-struct HashMapErr {}
 
 impl<K, V> HashMap<K, V>
 where
     K: Hash + Eq,
 {
-    fn get_bucket(&self, k: &K) -> u64 {
+    fn get_bucket(&self, k: &K, len: usize) -> u64 {
         let mut hasher = DefaultHasher::new();
         k.hash(&mut hasher);
-        hasher.finish() % self.buckets.len() as u64
+        hasher.finish() % len as u64
     }
-    pub fn new(initial_bucket_size: u64) -> Self {
-        let mut buckets: Vec<Vec<(K, V)>> = Vec::new();
-        for _ in 0..initial_bucket_size {
-            buckets.push(Vec::new());
-        }
-        HashMap {
-            buckets: buckets,
+    pub fn new(initial_bucket_size: usize) -> Self {
+        let buckets: Vec<Vec<(K, V)>> = Vec::new();
+        let mut hm = HashMap {
+            buckets,
+            initial_bucket_size,
             count: 0,
-        }
+        };
+        hm.resize();
+        hm
     }
 
-    pub fn put(&mut self, key: K, value: V) -> Option<V> {
-        let bucket = self.get_bucket(&key);
+    pub fn put(&mut self, key: K, value: V) {
+        if self.buckets.is_empty() || self.count > (self.buckets.len() * 3) as u64 {
+            println!("need to resize");
+            self.resize();
+        }
+        let bucket = self.get_bucket(&key, self.buckets.len());
         let bucket = &mut self.buckets[bucket as usize];
 
         self.count += 1;
-        bucket.iter_mut().for_each(|(&k, v)| {
-            if k == key {
-                let out = *v;
+        for (k, v) in bucket.iter_mut() {
+            if k == &key {
                 *v = value;
-                Some(out);
+                return;
             }
-        });
-        None
+        }
+        bucket.push((key, value));
     }
 
+    fn resize(&mut self) {
+        let target = match self.buckets.len() {
+            0 => self.initial_bucket_size,
+            n => n * 2,
+        };
+        let mut new_buckets: Vec<Vec<(K, V)>> = Vec::with_capacity(target);
+        for _ in 0..target {
+            new_buckets.push(Vec::new())
+        }
+        for bucket in self.buckets.drain(..) {
+            for (k, v) in bucket.into_iter() {
+                let mut hasher = DefaultHasher::new();
+                k.hash(&mut hasher);
+                let bucket = (hasher.finish() % new_buckets.len() as u64) as usize;
+                new_buckets[bucket].push((k, v));
+            }
+        }
+
+        self.buckets = new_buckets;
+    }
     pub fn get(&self, key: &K) -> Option<&V> {
-        let bucket = self.get_bucket(&key);
+        let bucket = self.get_bucket(&key, self.buckets.len());
         let bucket = &self.buckets[bucket as usize];
         for (ref k, ref v) in bucket.into_iter() {
             if k == key {
@@ -60,6 +83,12 @@ mod tests {
     use super::*;
     #[test]
     fn insert_and_get_works() {
-        let hm: HashMap<String, String> = HashMap::new(1);
+        let mut hm: HashMap<String, String> = HashMap::new(1);
+        hm.put(String::from("Name"), String::from("Amirreza"));
+        println!("{:?}", hm);
+        assert_eq!(
+            hm.get(&String::from("Name")),
+            Some(&String::from("Amirreza"))
+        );
     }
 }
