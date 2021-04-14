@@ -28,7 +28,7 @@ where
         hm
     }
 
-    pub fn put(&mut self, key: K, value: V) {
+    pub fn put(&mut self, key: K, value: V) -> Option<V> {
         if self.buckets.is_empty() || self.count > (self.buckets.len() * 3) as u64 {
             println!("need to resize");
             self.resize();
@@ -39,11 +39,11 @@ where
         self.count += 1;
         for (k, v) in bucket.iter_mut() {
             if k == &key {
-                *v = value;
-                return;
+                return Some(std::mem::replace(v, value));
             }
         }
         bucket.push((key, value));
+        None
     }
 
     fn resize(&mut self) {
@@ -99,7 +99,8 @@ mod tests {
         let value2 = &String::from("Parsa");
         hm.put(&key, &value1);
         assert_eq!(hm.get(&key), Some(&value1));
-        hm.put(&key, &value2);
+        let v1 = hm.put(&key, &value2);
         assert_eq!(hm.get(&key), Some(&value2));
+        assert_eq!(Some(value1), v1)
     }
 }
