@@ -91,4 +91,15 @@ mod tests {
             Some(&String::from("Amirreza"))
         );
     }
+    #[test]
+    fn insert_and_reinsert() {
+        let mut hm: HashMap<&String, &String> = HashMap::new(1);
+        let key = &String::from("Name");
+        let value1 = &String::from("Amirreza");
+        let value2 = &String::from("Parsa");
+        hm.put(&key, &value1);
+        assert_eq!(hm.get(&key), Some(&value1));
+        hm.put(&key, &value2);
+        assert_eq!(hm.get(&key), Some(&value2));
+    }
 }
